@@ -1,0 +1,83 @@
+version: '3'
+
+services:
+
+  nginx:
+    container_name: nginx
+    image: nginx:latest
+    volumes:
+      - ./:/var/www/
+      - ./_docker/nginx/conf.d/:/etc/nginx/conf.d/
+    restart: unless-stopped
+    ports:
+      - 1989:80
+      - 443:443
+    depends_on:
+      - app
+    networks:
+      - frontend
+      - backend
+
+  app:
+    container_name: app
+    build:
+        context: .
+        dockerfile: _docker/php/Dockerfile
+    volumes:
+      - ./:/var/www
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    networks:
+      - backend
+
+  vite:
+    container_name: vite
+    build:
+      context: .
+      dockerfile: _docker/node/Dockerfile
+    volumes:
+      - ./:/var/www
+    working_dir: /var/www
+    restart: unless-stopped
+    ports:
+      - 5173:5173
+    depends_on:
+      - app
+    tty: true
+    networks:
+      - frontend
+
+  mysql:
+    container_name: mysql
+    image: mysql:latest
+    volumes:
+      - ./_DB/mysql:/var/lib/mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - 3306:3306
+    command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci
+    networks:
+      - backend
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin:latest
+    ports:
+      - 8080:80
+    environment:
+      - PMA_ARBITRARY=1
+      - UPLOAD_LIMIT=100000000
+      - VIRTUAL_HOST=localhost
+      - VIRTUAL_PORT=81
+      - PMA_HOST=mysql
+    networks:
+      - frontend
+      - backend
+
+networks:
+  frontend:
+  backend:
